@@ -63,20 +63,30 @@ export async function createTask(input: {
   return simulateLatency(task);
 }
 
-export async function updateTask(id: string, patch: Partial<Task>): Promise<Task> {
+export async function updateTask(
+  id: string,
+  patch: Partial<Task>
+): Promise<Task> {
   tasks = tasks.map((task) => (task.id === id ? { ...task, ...patch } : task));
   const updated = tasks.find((task) => task.id === id)!;
   return simulateLatency(updated);
 }
 
-export async function createTimeBlock(input: Omit<TimeBlock, 'id'>): Promise<TimeBlock> {
+export async function createTimeBlock(
+  input: Omit<TimeBlock, 'id'>
+): Promise<TimeBlock> {
   const block: TimeBlock = { ...input, id: crypto.randomUUID() };
   timeBlocks = [...timeBlocks, block];
   return simulateLatency(block);
 }
 
-export async function updateTimeBlock(id: string, patch: Partial<TimeBlock>): Promise<TimeBlock> {
-  timeBlocks = timeBlocks.map((block) => (block.id === id ? { ...block, ...patch } : block));
+export async function updateTimeBlock(
+  id: string,
+  patch: Partial<TimeBlock>
+): Promise<TimeBlock> {
+  timeBlocks = timeBlocks.map((block) =>
+    block.id === id ? { ...block, ...patch } : block
+  );
   const updated = timeBlocks.find((block) => block.id === id)!;
   return simulateLatency(updated);
 }

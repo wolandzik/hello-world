@@ -11,7 +11,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             staleTime: 1000 * 30,
           },
         },
-      }),
+      })
   );
 
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;

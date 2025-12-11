@@ -16,7 +16,7 @@ export const log = (entry: LogEntry) => {
     JSON.stringify({
       timestamp: new Date().toISOString(),
       ...entry,
-    }),
+    })
   );
 };
 

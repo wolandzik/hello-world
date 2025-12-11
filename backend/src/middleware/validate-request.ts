@@ -8,7 +8,8 @@ export interface ValidationSchema {
   query?: AnyZodObject;
 }
 
-export const validateRequest = (schema: ValidationSchema) =>
+export const validateRequest =
+  (schema: ValidationSchema) =>
   (req: Request, _res: Response, next: NextFunction) => {
     try {
       if (schema.body) {

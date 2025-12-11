@@ -20,10 +20,14 @@ const priorityCopy: Record<TaskPriority, string> = {
 
 export function TaskList() {
   const queryClient = useQueryClient();
-  const { data: tasks = [] } = useQuery({ queryKey: ['tasks'], queryFn: fetchTasks });
-  const [filters, setFilters] = useState<{ priority: TaskPriority | 'all'; status: TaskStatus | 'all' }>(
-    () => ({ priority: 'all', status: 'all' }),
-  );
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: fetchTasks,
+  });
+  const [filters, setFilters] = useState<{
+    priority: TaskPriority | 'all';
+    status: TaskStatus | 'all';
+  }>(() => ({ priority: 'all', status: 'all' }));
   const [sort, setSort] = useState<'priority' | 'status'>('priority');
   const [quickTitle, setQuickTitle] = useState('');
   const [quickPriority, setQuickPriority] = useState<TaskPriority>('medium');
@@ -51,13 +55,14 @@ export function TaskList() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<Task> }) => updateTask(id, patch),
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<Task> }) =>
+      updateTask(id, patch),
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks'] });
       const previous = queryClient.getQueryData<Task[]>(['tasks']) ?? [];
       queryClient.setQueryData(
         ['tasks'],
-        previous.map((task) => (task.id === id ? { ...task, ...patch } : task)),
+        previous.map((task) => (task.id === id ? { ...task, ...patch } : task))
       );
       return { previous };
     },
@@ -69,8 +74,10 @@ export function TaskList() {
 
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((task) => {
-      const matchesPriority = filters.priority === 'all' || task.priority === filters.priority;
-      const matchesStatus = filters.status === 'all' || task.status === filters.status;
+      const matchesPriority =
+        filters.priority === 'all' || task.priority === filters.priority;
+      const matchesStatus =
+        filters.status === 'all' || task.status === filters.status;
       return matchesPriority && matchesStatus;
     });
 
@@ -97,7 +104,10 @@ export function TaskList() {
             <select
               value={filters.priority}
               onChange={(e) =>
-                setFilters((prev) => ({ ...prev, priority: e.target.value as TaskPriority | 'all' }))
+                setFilters((prev) => ({
+                  ...prev,
+                  priority: e.target.value as TaskPriority | 'all',
+                }))
               }
               className="section-card"
               style={{ padding: '10px 12px', width: '100%' }}
@@ -112,7 +122,12 @@ export function TaskList() {
             <span className="helper-text">Status</span>
             <select
               value={filters.status}
-              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value as TaskStatus | 'all' }))}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  status: e.target.value as TaskStatus | 'all',
+                }))
+              }
               className="section-card"
               style={{ padding: '10px 12px', width: '100%' }}
             >
@@ -126,7 +141,14 @@ export function TaskList() {
       </header>
 
       <div className="section-card" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 12, alignItems: 'end' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '2fr 1fr auto',
+            gap: 12,
+            alignItems: 'end',
+          }}
+        >
           <Input
             label="Quick add"
             placeholder="Write user story, fix regression, ..."
@@ -161,10 +183,22 @@ export function TaskList() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <label className="helper-text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          marginBottom: 12,
+        }}
+      >
+        <label
+          className="helper-text"
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+        >
           Sort by
-          <select value={sort} onChange={(e) => setSort(e.target.value as 'priority' | 'status')}>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as 'priority' | 'status')}
+          >
             <option value="priority">Priority</option>
             <option value="status">Status</option>
           </select>
@@ -178,19 +212,35 @@ export function TaskList() {
             className="section-card"
             style={{ borderColor: 'rgba(255,255,255,0.05)', padding: 14 }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
               <div>
-                <p className="helper-text">{new Date(task.dueDate ?? Date.now()).toLocaleString()}</p>
+                <p className="helper-text">
+                  {new Date(task.dueDate ?? Date.now()).toLocaleString()}
+                </p>
                 <h3 style={{ marginTop: 4 }}>{task.title}</h3>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="badge" data-tone={task.status === 'done' ? 'success' : 'info'}>
+                <span
+                  className="badge"
+                  data-tone={task.status === 'done' ? 'success' : 'info'}
+                >
                   {statusCopy[task.status]}
                 </span>
                 <span
                   className="badge"
                   data-tone={
-                    task.priority === 'high' ? 'danger' : task.priority === 'medium' ? 'warning' : 'success'
+                    task.priority === 'high'
+                      ? 'danger'
+                      : task.priority === 'medium'
+                        ? 'warning'
+                        : 'success'
                   }
                 >
                   {priorityCopy[task.priority]}
@@ -198,7 +248,10 @@ export function TaskList() {
                 <select
                   value={task.status}
                   onChange={(e) =>
-                    updateTaskMutation.mutate({ id: task.id, patch: { status: e.target.value as TaskStatus } })
+                    updateTaskMutation.mutate({
+                      id: task.id,
+                      patch: { status: e.target.value as TaskStatus },
+                    })
                   }
                 >
                   <option value="todo">To do</option>
