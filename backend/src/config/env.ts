@@ -1,10 +1,8 @@
 export const googleOAuthConfig = {
-  clientId: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
-  clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? '',
-  redirectUri:
-    process.env.GOOGLE_OAUTH_REDIRECT_URI ?? 'http://localhost:3000/api/auth/google/callback',
-  disconnectRedirectUri:
-    process.env.GOOGLE_OAUTH_DISCONNECT_REDIRECT_URI ?? 'http://localhost:3000/settings/integrations',
+  clientId: process.env.GOOGLE_OAUTH_CLIENT_ID ?? 'your-google-client-id',
+  clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? 'your-google-client-secret',
+  redirectUri: process.env.GOOGLE_OAUTH_REDIRECT_URI ?? 'http://localhost:3000/api/auth/google/callback',
+  disconnectRedirectUri: process.env.GOOGLE_OAUTH_DISCONNECT_REDIRECT_URI ?? 'http://localhost:3000/settings/integrations',
   scopes: [
     'openid',
     'email',
