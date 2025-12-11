@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { AnyZodObject, ZodError } from 'zod';
+import type { AnyZodObject, ZodError } from '../lib/zod';
 import { HttpError } from '../lib/http-error';
 
 export interface ValidationSchema {

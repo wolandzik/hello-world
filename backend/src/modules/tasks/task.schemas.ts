@@ -1,5 +1,5 @@
-import { TaskStatus } from '@prisma/client';
-import { z } from 'zod';
+import { TaskStatusEnum } from '../../lib/prisma-enums';
+import { z } from '../../lib/zod';
 
 const isoDate = z.string().datetime({ offset: true }).optional();
 
@@ -7,7 +7,7 @@ export const createTaskSchema = {
   body: z.object({
     userId: z.string().uuid(),
     title: z.string().min(1),
-    status: z.nativeEnum(TaskStatus).optional(),
+    status: z.nativeEnum(TaskStatusEnum).optional(),
     priorityLevel: z.number().int().min(1).max(5).optional(),
     priorityScore: z.number().nullable().optional(),
     dueAt: isoDate,
@@ -22,7 +22,7 @@ export const updateTaskSchema = {
   body: z
     .object({
       title: z.string().min(1).optional(),
-      status: z.nativeEnum(TaskStatus).optional(),
+      status: z.nativeEnum(TaskStatusEnum).optional(),
       priorityLevel: z.number().int().min(1).max(5).optional(),
       priorityScore: z.number().nullable().optional(),
       dueAt: isoDate,
@@ -56,6 +56,6 @@ export const taskIdSchema = {
 export const taskListSchema = {
   query: z.object({
     userId: z.string().uuid(),
-    status: z.nativeEnum(TaskStatus).optional(),
+    status: z.nativeEnum(TaskStatusEnum).optional(),
   }),
 };
