@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { createTask, fetchTasks, updateTask } from '../lib/api';
+import { trackEvent } from '../lib/telemetry';
 import { Task, TaskPriority, TaskStatus } from '../types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,12 +11,6 @@ const statusCopy: Record<TaskStatus, string> = {
   todo: 'To do',
   in_progress: 'In progress',
   done: 'Done',
-};
-
-const priorityCopy: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
 };
 
 export function TaskList() {
@@ -48,6 +43,11 @@ export function TaskList() {
       setQuickTitle('');
       return { previous };
     },
+    onSuccess: (task) =>
+      trackEvent('task.created', {
+        taskId: task.id,
+        priority: task.priority,
+      }),
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(['tasks'], ctx.previous);
     },
@@ -68,6 +68,14 @@ export function TaskList() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(['tasks'], ctx.previous);
+    },
+    onSuccess: (_task, { patch, id }) => {
+      if (patch.priority) {
+        trackEvent('task.priority_updated', {
+          taskId: id,
+          priority: patch.priority,
+        });
+      }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
@@ -233,18 +241,26 @@ export function TaskList() {
                 >
                   {statusCopy[task.status]}
                 </span>
-                <span
-                  className="badge"
-                  data-tone={
-                    task.priority === 'high'
-                      ? 'danger'
-                      : task.priority === 'medium'
-                        ? 'warning'
-                        : 'success'
+                <select
+                  value={task.priority}
+                  onChange={(e) =>
+                    updateTaskMutation.mutate({
+                      id: task.id,
+                      patch: { priority: e.target.value as TaskPriority },
+                    })
                   }
+                  style={{
+                    background: 'transparent',
+                    color: 'white',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    padding: '6px 8px',
+                  }}
                 >
-                  {priorityCopy[task.priority]}
-                </span>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
                 <select
                   value={task.status}
                   onChange={(e) =>

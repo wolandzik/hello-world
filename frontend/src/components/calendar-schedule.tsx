@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { createTimeBlock, fetchTimeBlocks, updateTimeBlock } from '../lib/api';
+import { trackEvent } from '../lib/telemetry';
 import { Task, TimeBlock } from '../types';
 
 export function CalendarSchedule({ tasks }: { tasks: Task[] }) {
@@ -32,6 +33,12 @@ export function CalendarSchedule({ tasks }: { tasks: Task[] }) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(['timeblocks'], ctx.previous);
     },
+    onSuccess: (block) =>
+      trackEvent('timeblock.scheduled', {
+        blockId: block.id,
+        start: block.start,
+        end: block.end,
+      }),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: ['timeblocks'] }),
   });
