@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
-import { z } from 'zod';
+import { z } from '../../lib/zod';
 import { validateRequest } from '../../middleware/validate-request';
 
 const focusSessionRouter = Router();
