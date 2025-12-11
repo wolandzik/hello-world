@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "bullmq": "^5.12.12",
     "express": "^4.19.2"
   },
   "devDependencies": {
