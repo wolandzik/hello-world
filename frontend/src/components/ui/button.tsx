@@ -18,7 +18,10 @@ export function Button({
   ...props
 }: ButtonProps) {
   return (
-    <button className={classNames(styles.button, styles[variant], className)} {...props}>
+    <button
+      className={classNames(styles.button, styles[variant], className)}
+      {...props}
+    >
       {icon && <span className={styles.icon}>{icon}</span>}
       <span>{children}</span>
     </button>

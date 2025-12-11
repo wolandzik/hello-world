@@ -1,4 +1,15 @@
-import { PrismaClient, TaskStatus, TimeBlockStatus, FocusSessionStatus, PlanningSessionType, PlanningContext, PlanningSource, ChannelVisibility, Provider, SyncMode } from '@prisma/client';
+import {
+  PrismaClient,
+  TaskStatus,
+  TimeBlockStatus,
+  FocusSessionStatus,
+  PlanningSessionType,
+  PlanningContext,
+  PlanningSource,
+  ChannelVisibility,
+  Provider,
+  SyncMode,
+} from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -70,8 +81,16 @@ async function main() {
       },
       subtasks: {
         create: [
-          { title: 'Review carryover tasks', status: TaskStatus.todo, order: 1 },
-          { title: 'Prioritize new requests', status: TaskStatus.todo, order: 2 },
+          {
+            title: 'Review carryover tasks',
+            status: TaskStatus.todo,
+            order: 1,
+          },
+          {
+            title: 'Prioritize new requests',
+            status: TaskStatus.todo,
+            order: 2,
+          },
         ],
       },
     },

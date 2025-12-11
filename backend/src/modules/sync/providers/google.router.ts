@@ -11,10 +11,16 @@ const oauthStartSchema = {
   }),
 };
 
-syncProviderRouter.post('/connect', validateRequest(oauthStartSchema), (req, res) => {
-  const { userId, scopes } = req.body;
-  res.status(202).json({ provider: 'google', userId, scopes, status: 'pending' });
-});
+syncProviderRouter.post(
+  '/connect',
+  validateRequest(oauthStartSchema),
+  (req, res) => {
+    const { userId, scopes } = req.body;
+    res
+      .status(202)
+      .json({ provider: 'google', userId, scopes, status: 'pending' });
+  }
+);
 
 syncProviderRouter.post('/disconnect', (_req, res) => {
   res.json({ provider: 'google', status: 'disconnected' });

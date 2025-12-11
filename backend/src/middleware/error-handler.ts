@@ -6,8 +6,10 @@ export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction,
+  _next: NextFunction
 ) => {
+  void _next;
+
   const status = err instanceof HttpError ? err.status : 500;
   const requestId = res.getHeader('x-request-id') as string | undefined;
 

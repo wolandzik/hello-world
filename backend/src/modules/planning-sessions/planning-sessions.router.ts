@@ -18,7 +18,7 @@ planningSessionRouter.post(
   (req, res) => {
     const { userId, type, context } = req.body;
     res.status(201).json({ userId, type, context, status: 'pending' });
-  },
+  }
 );
 
 planningSessionRouter.get('/', (_req, res) => {

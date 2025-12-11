@@ -26,8 +26,8 @@ export function CommandPalette() {
       </Button>
       <Modal title="Command palette" open={open} onClose={() => setOpen(false)}>
         <p>
-          This is a stub for quick actions. Wire actions like “create task”, “jump to today”, or “log time”
-          here.
+          This is a stub for quick actions. Wire actions like “create task”,
+          “jump to today”, or “log time” here.
         </p>
       </Modal>
     </>

@@ -13,16 +13,20 @@ const createTimeblockSchema = {
   }),
 };
 
-timeblocksRouter.post('/', validateRequest(createTimeblockSchema), (req, res) => {
-  const { userId, startAt, endAt, taskId } = req.body;
-  res.status(201).json({
-    userId,
-    startAt,
-    endAt,
-    taskId: taskId ?? null,
-    status: 'tentative',
-  });
-});
+timeblocksRouter.post(
+  '/',
+  validateRequest(createTimeblockSchema),
+  (req, res) => {
+    const { userId, startAt, endAt, taskId } = req.body;
+    res.status(201).json({
+      userId,
+      startAt,
+      endAt,
+      taskId: taskId ?? null,
+      status: 'tentative',
+    });
+  }
+);
 
 timeblocksRouter.get('/', (_req, res) => {
   res.json({ message: 'Timeblock listing not implemented yet' });

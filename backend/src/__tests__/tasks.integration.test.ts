@@ -10,7 +10,8 @@ let schema: string;
 
 beforeAll(async () => {
   const baseDatabaseUrl =
-    process.env.TEST_DATABASE_URL || 'postgresql://app:password@localhost:5432/app_db';
+    process.env.TEST_DATABASE_URL ||
+    'postgresql://app:password@localhost:5432/app_db';
   schema = `test_${randomUUID().replace(/-/g, '')}`;
   const databaseUrl = `${baseDatabaseUrl}?schema=${schema}`;
   process.env.DATABASE_URL = databaseUrl;
@@ -48,7 +49,9 @@ describe('tasks integration', () => {
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.title).toBe('Write integration tests');
 
-    const listResponse = await request(app).get('/tasks').query({ userId: user.id });
+    const listResponse = await request(app)
+      .get('/tasks')
+      .query({ userId: user.id });
     expect(listResponse.status).toBe(200);
     expect(listResponse.body).toHaveLength(1);
 
