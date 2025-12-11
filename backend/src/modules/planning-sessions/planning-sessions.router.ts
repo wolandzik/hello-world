@@ -1,5 +1,6 @@
-import { randomUUID } from 'crypto';
+import type { PlanningSessionType } from '@prisma/client';
 import { Router } from 'express';
+import { prisma } from '../../lib/prisma';
 import { z } from '../../lib/zod';
 import { validateRequest } from '../../middleware/validate-request';
 
@@ -10,7 +11,9 @@ const createPlanningSessionSchema = {
     userId: z.string().uuid(),
     type: z.enum(['morning', 'evening', 'weekly', 'custom']),
     context: z.enum(['work', 'personal']),
+    source: z.enum(['auto', 'manual']).default('manual'),
     scheduledFor: z.string().datetime().optional(),
+    notes: z.string().optional(),
   }),
 };
 
@@ -18,61 +21,100 @@ const completePlanningSessionSchema = {
   params: z.object({ id: z.string().uuid() }),
   body: z.object({
     reflection: z.string().optional(),
-    highlightId: z.string().uuid().optional(),
-    objectiveIds: z.array(z.string().uuid()).default([]),
   }),
 };
+
+const listPlanningSessionsSchema = {
+  query: z.object({
+    userId: z.string().uuid(),
+    type: z
+      .enum(['morning', 'evening', 'weekly', 'custom'])
+      .optional() as z.ZodType<PlanningSessionType | undefined>,
+  }),
+};
+
+const toResponse = (session: {
+  id: string;
+  user_id: string;
+  type: PlanningSessionType;
+  context: string;
+  source: string;
+  started_at: Date;
+  completed_at: Date | null;
+  notes: string | null;
+}) => ({
+  id: session.id,
+  userId: session.user_id,
+  type: session.type,
+  context: session.context,
+  source: session.source,
+  startedAt: session.started_at.toISOString(),
+  completedAt: session.completed_at?.toISOString() ?? null,
+  notes: session.notes,
+});
 
 planningSessionRouter.post(
   '/',
   validateRequest(createPlanningSessionSchema),
-  (req, res) => {
-    const { userId, type, context, scheduledFor } = req.body;
-    res.status(201).json({
-      id: randomUUID(),
-      userId,
-      type,
-      context,
-      status: 'in_progress',
-      scheduledFor: scheduledFor ?? new Date().toISOString(),
-      startedAt: new Date().toISOString(),
-    });
+  async (req, res, next) => {
+    const { userId, type, context, source, scheduledFor, notes } = req.body;
+
+    try {
+      const session = await prisma.planningSession.create({
+        data: {
+          user_id: userId,
+          type,
+          context,
+          source,
+          started_at: scheduledFor ? new Date(scheduledFor) : new Date(),
+          notes,
+        },
+      });
+
+      res.status(201).json(toResponse(session));
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
 planningSessionRouter.patch(
   '/:id/complete',
   validateRequest(completePlanningSessionSchema),
-  (req, res) => {
+  async (req, res, next) => {
     const { id } = req.params;
-    const { reflection, highlightId, objectiveIds } = req.body;
-    res.json({
-      id,
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      reflection,
-      highlightId,
-      objectiveIds,
-    });
+    const { reflection } = req.body;
+
+    try {
+      const session = await prisma.planningSession.update({
+        where: { id },
+        data: { completed_at: new Date(), notes: reflection },
+      });
+
+      res.json(toResponse(session));
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
-planningSessionRouter.get('/', (_req, res) => {
-  res.json({
-    sessions: [
-      {
-        id: 'ps-1',
-        userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
-        type: 'morning',
-        context: 'work',
-        status: 'completed',
-        startedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-        completedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-        highlightId: 'h-1',
-        objectiveIds: ['obj-1'],
-      },
-    ],
-  });
-});
+planningSessionRouter.get(
+  '/',
+  validateRequest(listPlanningSessionsSchema),
+  async (req, res, next) => {
+    const { userId, type } = req.query as { userId: string; type?: PlanningSessionType };
+
+    try {
+      const sessions = await prisma.planningSession.findMany({
+        where: { user_id: userId, type },
+        orderBy: { started_at: 'desc' },
+      });
+
+      res.json(sessions.map(toResponse));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default planningSessionRouter;
