@@ -1,11 +1,6 @@
-import express from 'express';
+import app from './app';
 
-const app = express();
 const port = process.env.PORT || 3001;
-
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
-});
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
