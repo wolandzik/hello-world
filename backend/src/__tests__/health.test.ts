@@ -6,6 +6,7 @@ describe('health endpoint', () => {
   it('responds with status ok', async () => {
     const response = await request(app).get('/health');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.body.status).toBe('ok');
+    expect(response.body.checks).toEqual({ db: 'skipped', redis: 'skipped' });
   });
 });

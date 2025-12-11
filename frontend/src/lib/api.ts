@@ -8,7 +8,10 @@ import {
   Task,
   TaskPriority,
   TaskStatus,
+  Channel,
   TimeBlock,
+  TimeBlockStatus,
+  CalendarIntegrationStatus,
 } from '../types';
 
 let tasks: Task[] = [
@@ -35,6 +38,25 @@ let tasks: Task[] = [
   },
 ];
 
+let channels: Channel[] = [
+  {
+    id: 'c-1',
+    userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
+    name: 'Deep work',
+    visibility: 'private',
+    color: '#8b5cf6',
+    targetCalendarId: null,
+  },
+  {
+    id: 'c-2',
+    userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
+    name: 'Meetings',
+    visibility: 'shared',
+    color: '#22c55e',
+    targetCalendarId: null,
+  },
+];
+
 let timeBlocks: TimeBlock[] = [
   {
     id: 'b-1',
@@ -42,6 +64,9 @@ let timeBlocks: TimeBlock[] = [
     taskId: 't-1',
     start: new Date().toISOString(),
     end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    channelId: 'c-1',
+    status: 'confirmed',
+    provider: 'local',
   },
 ];
 
@@ -51,10 +76,10 @@ let planningSessions: PlanningSession[] = [
     userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
     type: 'morning',
     context: 'work',
-    status: 'completed',
+    status: 'in_progress',
     startedAt: new Date().toISOString(),
-    completedAt: new Date().toISOString(),
     highlightId: 'h-1',
+    plannedTaskIds: ['t-1'],
   },
 ];
 
@@ -87,22 +112,170 @@ let focusSessions: FocusSession[] = [
     plannedMinutes: 50,
     actualMinutes: 45,
     status: 'completed',
+    startedAt: new Date(Date.now() - 50 * 60000).toISOString(),
+    completedAt: new Date().toISOString(),
+    goal: 'Write drafts',
+    interruptions: 1,
   },
 ];
 
 let breaks: ScheduledBreak[] = [];
+
+let calendarIntegration: CalendarIntegrationStatus = {
+  provider: 'google',
+  status: 'disconnected',
+  syncMode: 'polling',
+  lastSyncedAt: null,
+  calendarId: null,
+};
+
+const findFirstOpenSlot = (
+  sortedBlocks: TimeBlock[],
+  searchStart: Date,
+  searchEnd: Date,
+  preferredStartHour: number,
+  preferredEndHour: number,
+  durationMinutes: number
+) => {
+  const durationMs = durationMinutes * 60 * 1000;
+  const cursorDay = new Date(searchStart);
+  cursorDay.setHours(0, 0, 0, 0);
+
+  while (cursorDay <= searchEnd) {
+    const dayStart = new Date(cursorDay);
+    dayStart.setHours(preferredStartHour, 0, 0, 0);
+    const dayEnd = new Date(cursorDay);
+    dayEnd.setHours(preferredEndHour, 0, 0, 0);
+
+    const windowStart = new Date(Math.max(dayStart.getTime(), searchStart.getTime()));
+    const windowEnd = new Date(Math.min(dayEnd.getTime(), searchEnd.getTime()));
+
+    if (windowEnd > windowStart) {
+      const dayBlocks = sortedBlocks.filter(
+        (block) => new Date(block.start) < windowEnd && new Date(block.end) > windowStart
+      );
+
+      let cursor = windowStart;
+
+      for (const block of dayBlocks) {
+        const blockStart = new Date(block.start);
+        const blockEnd = new Date(block.end);
+
+        if (blockStart.getTime() - cursor.getTime() >= durationMs) {
+          return { start: cursor, end: new Date(cursor.getTime() + durationMs) };
+        }
+
+        if (blockEnd > cursor) {
+          cursor = blockEnd;
+        }
+      }
+
+      if (windowEnd.getTime() - cursor.getTime() >= durationMs) {
+        return { start: cursor, end: new Date(cursor.getTime() + durationMs) };
+      }
+    }
+
+    cursorDay.setDate(cursorDay.getDate() + 1);
+  }
+
+  return null;
+};
 
 function simulateLatency<T>(data: T, delay = 120): Promise<T> {
   const clone = JSON.parse(JSON.stringify(data)) as T;
   return new Promise((resolve) => setTimeout(() => resolve(clone), delay));
 }
 
+function hasOverlap(a: Pick<TimeBlock, 'start' | 'end'>, b: Pick<TimeBlock, 'start' | 'end'>) {
+  return new Date(a.start) < new Date(b.end) && new Date(a.end) > new Date(b.start);
+}
+
+function assertNoTimeBlockConflicts(candidate: TimeBlock, excludeId?: string) {
+  const conflict = timeBlocks.find(
+    (block) =>
+      block.id !== excludeId && block.status !== 'cancelled' && hasOverlap(block, candidate)
+  );
+
+  if (conflict) {
+    const error = new Error('Time block conflicts with another block');
+    (error as Error & { conflict?: TimeBlock }).conflict = conflict;
+    throw error;
+  }
+}
+
+export async function fetchChannels(): Promise<Channel[]> {
+  return simulateLatency(channels);
+}
+
+export async function createChannel(
+  input: Omit<Channel, 'id'>
+): Promise<Channel> {
+  const channel: Channel = { ...input, id: crypto.randomUUID() };
+  channels = [...channels, channel];
+  return simulateLatency(channel);
+}
+
+export async function updateChannel(
+  id: string,
+  patch: Partial<Omit<Channel, 'id'>>
+): Promise<Channel> {
+  channels = channels.map((channel) =>
+    channel.id === id ? { ...channel, ...patch } : channel
+  );
+  const updated = channels.find((channel) => channel.id === id)!;
+  return simulateLatency(updated);
+}
+
 export async function fetchTasks(): Promise<Task[]> {
   return simulateLatency(tasks);
 }
 
-export async function fetchTimeBlocks(): Promise<TimeBlock[]> {
-  return simulateLatency(timeBlocks);
+export async function fetchTimeBlocks(filters?: {
+  channelId?: string | null;
+  status?: TimeBlockStatus;
+}): Promise<TimeBlock[]> {
+  let results = [...timeBlocks];
+  if (filters?.channelId) {
+    results = results.filter((block) => block.channelId === filters.channelId);
+  }
+  if (filters?.status) {
+    results = results.filter((block) => block.status === filters.status);
+  }
+  return simulateLatency(results);
+}
+
+export async function fetchCalendarStatus(): Promise<CalendarIntegrationStatus> {
+  return simulateLatency(calendarIntegration);
+}
+
+export async function connectCalendar(
+  _scopes: string[] = ['https://www.googleapis.com/auth/calendar.events']
+): Promise<CalendarIntegrationStatus> {
+  calendarIntegration = {
+    ...calendarIntegration,
+    status: 'connected',
+    integrationId: calendarIntegration.integrationId ?? crypto.randomUUID(),
+    lastSyncedAt: new Date().toISOString(),
+  };
+  return simulateLatency(calendarIntegration);
+}
+
+export async function disconnectCalendar(): Promise<CalendarIntegrationStatus> {
+  calendarIntegration = {
+    provider: 'google',
+    status: 'disconnected',
+    syncMode: 'polling',
+    lastSyncedAt: null,
+    calendarId: null,
+  };
+  return simulateLatency(calendarIntegration);
+}
+
+export async function pollCalendar(): Promise<{ synced: number; lastSyncedAt: string }> {
+  const lastSyncedAt = new Date().toISOString();
+  calendarIntegration = { ...calendarIntegration, status: 'connected', lastSyncedAt };
+  const synced = Math.max(1, Math.floor(Math.random() * 3));
+  return simulateLatency({ synced, lastSyncedAt });
 }
 
 export async function createTask(input: {
@@ -131,9 +304,15 @@ export async function updateTask(
 }
 
 export async function createTimeBlock(
-  input: Omit<TimeBlock, 'id'>
+  input: Omit<TimeBlock, 'id' | 'status'> & { status?: TimeBlockStatus }
 ): Promise<TimeBlock> {
-  const block: TimeBlock = { ...input, id: crypto.randomUUID() };
+  const block: TimeBlock = {
+    id: crypto.randomUUID(),
+    status: input.status ?? 'tentative',
+    provider: input.provider ?? 'local',
+    ...input,
+  };
+  assertNoTimeBlockConflicts(block);
   timeBlocks = [...timeBlocks, block];
   return simulateLatency(block);
 }
@@ -142,11 +321,76 @@ export async function updateTimeBlock(
   id: string,
   patch: Partial<TimeBlock>
 ): Promise<TimeBlock> {
-  timeBlocks = timeBlocks.map((block) =>
-    block.id === id ? { ...block, ...patch } : block
-  );
-  const updated = timeBlocks.find((block) => block.id === id)!;
+  const existing = timeBlocks.find((block) => block.id === id);
+  if (!existing) {
+    throw new Error('Time block not found');
+  }
+
+  const updated: TimeBlock = {
+    ...existing,
+    ...patch,
+  };
+
+  assertNoTimeBlockConflicts(updated, id);
+
+  timeBlocks = timeBlocks.map((block) => (block.id === id ? updated : block));
   return simulateLatency(updated);
+}
+
+export async function suggestTimeBlock(options: {
+  taskId?: string;
+  title?: string;
+  channelId?: string | null;
+  durationMinutes?: number;
+  windowStart?: string;
+  windowEnd?: string;
+  preferredStartHour?: number;
+  preferredEndHour?: number;
+}): Promise<TimeBlock> {
+  const {
+    taskId,
+    title,
+    channelId,
+    durationMinutes = 60,
+    windowStart,
+    windowEnd,
+    preferredStartHour = 9,
+    preferredEndHour = 17,
+  } = options;
+
+  const searchStart = windowStart ? new Date(windowStart) : new Date();
+  const searchEnd = windowEnd ? new Date(windowEnd) : new Date(searchStart.getTime() + 7 * 86400000);
+  const sorted = [...timeBlocks].sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+  );
+
+  const slot = findFirstOpenSlot(
+    sorted,
+    searchStart,
+    searchEnd,
+    preferredStartHour,
+    preferredEndHour,
+    durationMinutes
+  );
+
+  if (!slot) {
+    throw new Error('No available time within the selected window');
+  }
+
+  const block: TimeBlock = {
+    id: crypto.randomUUID(),
+    title: title ?? 'Suggested block',
+    taskId,
+    channelId: channelId ?? undefined,
+    start: slot.start.toISOString(),
+    end: slot.end.toISOString(),
+    status: 'tentative',
+    provider: 'local',
+  };
+
+  assertNoTimeBlockConflicts(block);
+  timeBlocks = [...timeBlocks, block];
+  return simulateLatency(block);
 }
 
 export async function listPlanningSessions(): Promise<PlanningSession[]> {
@@ -158,11 +402,13 @@ export async function startPlanningSession(input: {
   type: PlanningSessionType;
   context: 'work' | 'personal';
   scheduledFor?: string;
+  plannedTaskIds?: string[];
+  reflection?: string;
 }): Promise<PlanningSession> {
   const session: PlanningSession = {
     id: crypto.randomUUID(),
-    status: 'in_progress',
-    startedAt: new Date().toISOString(),
+    status: input.scheduledFor ? 'planned' : 'in_progress',
+    startedAt: input.scheduledFor ?? new Date().toISOString(),
     ...input,
   };
   planningSessions = [session, ...planningSessions];
@@ -229,7 +475,8 @@ export async function createFocusSession(
   const session: FocusSession = {
     id: crypto.randomUUID(),
     status: 'active',
-    startedAt: new Date().toISOString(),
+    startedAt: input.startedAt ?? new Date().toISOString(),
+    interruptions: 0,
     ...input,
   };
   focusSessions = [session, ...focusSessions];
@@ -247,6 +494,7 @@ export async function completeFocusSession(
           ...input,
           status: 'completed',
           completedAt: new Date().toISOString(),
+          interruptions: input.interruptions ?? session.interruptions,
         }
       : session
   );

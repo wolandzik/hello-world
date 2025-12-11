@@ -79,7 +79,6 @@ model User {
 
   tasks               Task[]
   task_imports        TaskImport[]
-  subtasks            Subtask[]
   time_blocks         TimeBlock[]
   channels            Channel[]
   planning_sessions   PlanningSession[]
@@ -155,6 +154,8 @@ model TimeBlock {
   user_id            String
   task               Task?           @relation(fields: [task_id], references: [id])
   task_id            String?
+  channel            Channel?        @relation(fields: [channel_id], references: [id])
+  channel_id         String?
   start_at           DateTime
   end_at             DateTime
   status             TimeBlockStatus @default(tentative)
@@ -167,6 +168,8 @@ model TimeBlock {
   updated_at         DateTime        @updatedAt
 
   @@index([user_id, start_at, end_at])
+  @@index([user_id, channel_id])
+  @@unique([user_id, calendar_event_id])
 }
 
 model Channel {
@@ -181,6 +184,7 @@ model Channel {
   updated_at         DateTime          @updatedAt
 
   tasks              Task[]
+  time_blocks        TimeBlock[]
 }
 
 model PlanningSession {

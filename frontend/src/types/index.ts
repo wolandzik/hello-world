@@ -10,12 +10,35 @@ export type Task = {
   dueDate?: string;
 };
 
+export type TimeBlockStatus =
+  | 'tentative'
+  | 'confirmed'
+  | 'completed'
+  | 'cancelled';
+
 export type TimeBlock = {
   id: string;
   title: string;
   taskId?: string;
+  channelId?: string | null;
   start: string;
   end: string;
+  status: TimeBlockStatus;
+  location?: string;
+  notes?: string;
+  provider?: 'google' | 'ical' | 'local';
+  calendarEventId?: string | null;
+};
+
+export type ChannelVisibility = 'private' | 'shared';
+
+export type Channel = {
+  id: string;
+  userId: string;
+  name: string;
+  visibility: ChannelVisibility;
+  targetCalendarId?: string | null;
+  color?: string | null;
 };
 
 export type PlanningSessionType = 'morning' | 'evening' | 'weekly' | 'custom';
@@ -32,6 +55,7 @@ export type PlanningSession = {
   completedAt?: string;
   reflection?: string;
   highlightId?: string;
+  plannedTaskIds?: string[];
   objectiveIds?: string[];
 };
 
@@ -63,6 +87,7 @@ export type FocusSession = {
   status: 'active' | 'completed';
   startedAt?: string;
   completedAt?: string;
+  interruptions?: number;
 };
 
 export type ScheduledBreak = {
@@ -73,4 +98,13 @@ export type ScheduledBreak = {
   start: string;
   end: string;
   reminderSent: boolean;
+};
+
+export type CalendarIntegrationStatus = {
+  provider: 'google';
+  status: 'connected' | 'disconnected';
+  integrationId?: string;
+  syncMode?: 'polling' | 'webhook';
+  lastSyncedAt?: string | null;
+  calendarId?: string | null;
 };
