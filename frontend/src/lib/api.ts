@@ -1,4 +1,15 @@
-import { Task, TaskPriority, TaskStatus, TimeBlock } from '../types';
+import {
+  FocusSession,
+  Highlight,
+  Objective,
+  PlanningSession,
+  PlanningSessionType,
+  ScheduledBreak,
+  Task,
+  TaskPriority,
+  TaskStatus,
+  TimeBlock,
+} from '../types';
 
 let tasks: Task[] = [
   {
@@ -33,6 +44,53 @@ let timeBlocks: TimeBlock[] = [
     end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   },
 ];
+
+let planningSessions: PlanningSession[] = [
+  {
+    id: 'ps-1',
+    userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
+    type: 'morning',
+    context: 'work',
+    status: 'completed',
+    startedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    highlightId: 'h-1',
+  },
+];
+
+let highlights: Highlight[] = [
+  {
+    id: 'h-1',
+    userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
+    title: 'Finish onboarding spec',
+    date: new Date().toISOString().slice(0, 10),
+    status: 'scheduled',
+  },
+];
+
+let objectives: Objective[] = [
+  {
+    id: 'obj-1',
+    userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
+    title: 'Ship onboarding beta',
+    timeframe: 'this_week',
+    successCriteria: '3 pilot users complete onboarding',
+    status: 'active',
+  },
+];
+
+let focusSessions: FocusSession[] = [
+  {
+    id: 'fs-1',
+    userId: 'f1c3b317-1111-4b0c-9b44-2b2fd0d3f111',
+    taskId: 't-1',
+    plannedMinutes: 50,
+    actualMinutes: 45,
+    status: 'completed',
+  },
+];
+
+let breaks: ScheduledBreak[] = [];
 
 function simulateLatency<T>(data: T, delay = 120): Promise<T> {
   const clone = JSON.parse(JSON.stringify(data)) as T;
@@ -89,4 +147,125 @@ export async function updateTimeBlock(
   );
   const updated = timeBlocks.find((block) => block.id === id)!;
   return simulateLatency(updated);
+}
+
+export async function listPlanningSessions(): Promise<PlanningSession[]> {
+  return simulateLatency(planningSessions);
+}
+
+export async function startPlanningSession(input: {
+  userId: string;
+  type: PlanningSessionType;
+  context: 'work' | 'personal';
+  scheduledFor?: string;
+}): Promise<PlanningSession> {
+  const session: PlanningSession = {
+    id: crypto.randomUUID(),
+    status: 'in_progress',
+    startedAt: new Date().toISOString(),
+    ...input,
+  };
+  planningSessions = [session, ...planningSessions];
+  return simulateLatency(session);
+}
+
+export async function completePlanningSession(
+  id: string,
+  patch: Partial<PlanningSession>
+): Promise<PlanningSession> {
+  planningSessions = planningSessions.map((session) =>
+    session.id === id
+      ? {
+          ...session,
+          ...patch,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+        }
+      : session
+  );
+  const completed = planningSessions.find((session) => session.id === id)!;
+  return simulateLatency(completed);
+}
+
+export async function fetchHighlights(): Promise<Highlight[]> {
+  return simulateLatency(highlights);
+}
+
+export async function createHighlight(
+  input: Omit<Highlight, 'id' | 'status'>
+): Promise<Highlight> {
+  const highlight: Highlight = {
+    id: crypto.randomUUID(),
+    status: 'scheduled',
+    ...input,
+  };
+  highlights = [highlight, ...highlights];
+  return simulateLatency(highlight);
+}
+
+export async function fetchObjectives(): Promise<Objective[]> {
+  return simulateLatency(objectives);
+}
+
+export async function createObjective(
+  input: Omit<Objective, 'id' | 'status'>
+): Promise<Objective> {
+  const objective: Objective = {
+    id: crypto.randomUUID(),
+    status: 'planned',
+    ...input,
+  };
+  objectives = [objective, ...objectives];
+  return simulateLatency(objective);
+}
+
+export async function fetchFocusSessions(): Promise<FocusSession[]> {
+  return simulateLatency(focusSessions);
+}
+
+export async function createFocusSession(
+  input: Omit<FocusSession, 'id' | 'status'>
+): Promise<FocusSession> {
+  const session: FocusSession = {
+    id: crypto.randomUUID(),
+    status: 'active',
+    startedAt: new Date().toISOString(),
+    ...input,
+  };
+  focusSessions = [session, ...focusSessions];
+  return simulateLatency(session);
+}
+
+export async function completeFocusSession(
+  id: string,
+  input: Pick<FocusSession, 'actualMinutes'> & Partial<FocusSession>
+): Promise<FocusSession> {
+  focusSessions = focusSessions.map((session) =>
+    session.id === id
+      ? {
+          ...session,
+          ...input,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+        }
+      : session
+  );
+  const session = focusSessions.find((item) => item.id === id)!;
+  return simulateLatency(session);
+}
+
+export async function fetchBreaks(): Promise<ScheduledBreak[]> {
+  return simulateLatency(breaks);
+}
+
+export async function createBreak(
+  input: Omit<ScheduledBreak, 'id' | 'reminderSent'>
+): Promise<ScheduledBreak> {
+  const scheduledBreak: ScheduledBreak = {
+    id: crypto.randomUUID(),
+    reminderSent: false,
+    ...input,
+  };
+  breaks = [scheduledBreak, ...breaks];
+  return simulateLatency(scheduledBreak);
 }

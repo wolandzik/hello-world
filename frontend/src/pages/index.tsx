@@ -3,7 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 
 import { CalendarSchedule } from '../components/calendar-schedule';
 import { CommandPalette } from '../components/command-palette';
+import { FocusSessionPanel } from '../components/focus-session-panel';
+import { PlanningWizard } from '../components/planning-wizard';
 import { TaskList } from '../components/task-list';
+import { WeeklyObjectives } from '../components/weekly-objectives';
 import { fetchTasks } from '../lib/api';
 
 export default function Home() {
@@ -27,8 +30,9 @@ export default function Home() {
       </Head>
       <main>
         <div className="layout-grid">
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <TaskList />
+            <PlanningWizard />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div
@@ -49,6 +53,8 @@ export default function Home() {
               </div>
               <CommandPalette />
             </div>
+            <WeeklyObjectives />
+            <FocusSessionPanel tasks={tasks} />
             <CalendarSchedule tasks={tasks} />
           </div>
         </div>
