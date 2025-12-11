@@ -1,0 +1,254 @@
+// Prisma schema describing the planning and scheduling entities
+// See docs/tech/data-model.md for field descriptions.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum TaskImportState {
+  proposed
+  accepted
+  ignored
+}
+
+enum TimeBlockStatus {
+  tentative
+  confirmed
+  completed
+  cancelled
+}
+
+enum ChannelVisibility {
+  private
+  shared
+}
+
+enum PlanningSessionType {
+  morning
+  evening
+  weekly
+  custom
+}
+
+enum PlanningContext {
+  work
+  personal
+}
+
+enum PlanningSource {
+  auto
+  manual
+}
+
+enum FocusSessionStatus {
+  active
+  completed
+  cancelled
+}
+
+enum SyncMode {
+  polling
+  webhook
+}
+
+enum Provider {
+  google
+  ical
+  local
+}
+
+model User {
+  id               String               @id @default(uuid())
+  email            String               @unique
+  display_name     String
+  settings         Json?
+  onboarding_state String?
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+
+  tasks               Task[]
+  task_imports        TaskImport[]
+  subtasks            Subtask[]
+  time_blocks         TimeBlock[]
+  channels            Channel[]
+  planning_sessions   PlanningSession[]
+  objectives          Objective[]
+  focus_sessions      FocusSession[]
+  calendar_integrations CalendarIntegration[]
+  audit_logs          AuditLog[]
+}
+
+model Task {
+  id                String         @id @default(uuid())
+  user              User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id           String
+  title             String
+  rich_notes        String?        @db.Text
+  status            TaskStatus     @default(todo)
+  priority_score    Float? 
+  priority_level    Int            @default(3)
+  due_at            DateTime?
+  planned_minutes   Int?
+  estimated_minutes Int?
+  actual_minutes    Int?
+  channel           Channel?       @relation(fields: [channel_id], references: [id])
+  channel_id        String?
+  planned_sessions  String[]      @default([])
+  recurrence_rule   String?
+  rollover_state    Json?
+  labels            String[]      @default([])
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  subtasks          Subtask[]
+  time_blocks       TimeBlock[]
+  focus_sessions    FocusSession[]
+  task_imports      TaskImport[]
+
+  @@index([user_id, status])
+  @@index([user_id, priority_score(sort: Desc)])
+  @@index([user_id, due_at])
+  @@index([user_id, channel_id])
+  @@index([labels], type: Gin)
+}
+
+model Subtask {
+  id         String     @id @default(uuid())
+  task       Task       @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  task_id    String
+  title      String
+  status     TaskStatus @default(todo)
+  order      Int
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+
+  @@index([task_id, order])
+}
+
+model TaskImport {
+  id         String          @id @default(uuid())
+  user       User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id    String
+  source     String
+  source_ref String
+  payload    Json
+  task       Task?           @relation(fields: [task_id], references: [id])
+  task_id    String?
+  state      TaskImportState @default(proposed)
+  created_at DateTime        @default(now())
+}
+
+model TimeBlock {
+  id                 String          @id @default(uuid())
+  user               User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id            String
+  task               Task?           @relation(fields: [task_id], references: [id])
+  task_id            String?
+  start_at           DateTime
+  end_at             DateTime
+  status             TimeBlockStatus @default(tentative)
+  location           String?
+  notes              String?         @db.Text
+  calendar_event_id  String?
+  provider           Provider
+  recurrence_rule    String?
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+
+  @@index([user_id, start_at, end_at])
+}
+
+model Channel {
+  id                 String            @id @default(uuid())
+  user               User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id            String
+  name               String
+  visibility         ChannelVisibility @default(private)
+  target_calendar_id String?
+  color              String?
+  created_at         DateTime          @default(now())
+  updated_at         DateTime          @updatedAt
+
+  tasks              Task[]
+}
+
+model PlanningSession {
+  id            String              @id @default(uuid())
+  user          User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id       String
+  type          PlanningSessionType
+  started_at    DateTime
+  completed_at  DateTime?
+  context       PlanningContext
+  source        PlanningSource
+  notes         String?             @db.Text
+
+  @@index([user_id, started_at(sort: Desc)])
+}
+
+model Objective {
+  id            String     @id @default(uuid())
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id       String
+  type          String
+  title         String
+  description   String?    @db.Text
+  target_week   DateTime?
+  status        String?
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+}
+
+model FocusSession {
+  id              String             @id @default(uuid())
+  user            User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id         String
+  task            Task               @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  task_id         String
+  start_at        DateTime
+  end_at          DateTime
+  planned_minutes Int
+  actual_minutes  Int?
+  status          FocusSessionStatus @default(active)
+  interruptions   Json?
+  created_at      DateTime           @default(now())
+
+  @@index([user_id, start_at(sort: Desc)])
+}
+
+model CalendarIntegration {
+  id             String    @id @default(uuid())
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id        String
+  provider       Provider
+  access_token   String
+  refresh_token  String?
+  expires_at     DateTime?
+  sync_state     Json?
+  sync_mode      SyncMode  @default(polling)
+  calendar_id    String?
+
+  @@index([user_id, provider])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id     String
+  action      String
+  entity_type String
+  entity_id   String
+  metadata    Json?
+  created_at  DateTime @default(now())
+}
