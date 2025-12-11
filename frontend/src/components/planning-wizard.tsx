@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   completePlanningSession,
   createHighlight,
+  fetchTasks,
   fetchHighlights,
   listPlanningSessions,
   startPlanningSession,
@@ -19,11 +20,17 @@ export function PlanningWizard() {
   const [sessionType, setSessionType] = useState<PlanningSessionType>('morning');
   const [highlightTitle, setHighlightTitle] = useState('');
   const [reflection, setReflection] = useState('');
+  const [plannedTasks, setPlannedTasks] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   const { data: sessions = [] } = useQuery({
     queryKey: ['planningSessions'],
     queryFn: listPlanningSessions,
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: fetchTasks,
   });
 
   const { data: highlights = [] } = useQuery({
@@ -73,7 +80,9 @@ export function PlanningWizard() {
   });
 
   const activeSession = useMemo(
-    () => sessions.find((session) => session.status === 'in_progress'),
+    () =>
+      sessions.find((session) => session.status === 'in_progress') ||
+      sessions.find((session) => session.status === 'planned'),
     [sessions]
   );
 
@@ -88,6 +97,7 @@ export function PlanningWizard() {
       type: sessionType,
       context: 'work',
       scheduledFor: new Date().toISOString(),
+      plannedTaskIds: plannedTasks,
     });
   };
 
@@ -115,7 +125,21 @@ export function PlanningWizard() {
 
     setHighlightTitle('');
     setReflection('');
+    setPlannedTasks([]);
   };
+
+  const toggleTask = (taskId: string) => {
+    setPlannedTasks((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const recentSessions = useMemo(
+    () => sessions.slice(0, 4),
+    [sessions]
+  );
 
   return (
     <div className="section-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -143,6 +167,21 @@ export function PlanningWizard() {
             placeholder="Plan focus blocks, review blockers"
             onChange={(e) => setReflection(e.target.value)}
           />
+          <div>
+            <label className="helper-text">Plan tasks</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {tasks.map((task) => (
+                <label key={task.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={plannedTasks.includes(task.id)}
+                    onChange={() => toggleTask(task.id)}
+                  />
+                  <span>{task.title}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <label className="helper-text">Session</label>
             <select
@@ -159,7 +198,10 @@ export function PlanningWizard() {
             </Button>
           </div>
           {activeSession ? (
-            <p className="helper-text">Session {activeSession.id} is in progress.</p>
+            <p className="helper-text">
+              Session {activeSession.id} is {activeSession.status.replace('_', ' ')} with{' '}
+              {activeSession.plannedTaskIds?.length ?? 0} planned tasks.
+            </p>
           ) : (
             <p className="helper-text">Start a session to collect highlights and reflections.</p>
           )}
@@ -174,6 +216,7 @@ export function PlanningWizard() {
                   ? new Date(lastCompleted.completedAt).toLocaleString()
                   : 'Recently finished'}
               </p>
+              {lastCompleted.reflection && <p>{lastCompleted.reflection}</p>}
             </>
           ) : (
             <p className="helper-text">No completed sessions yet.</p>
@@ -181,6 +224,24 @@ export function PlanningWizard() {
           <p className="helper-text">
             Upcoming highlight: {highlights[0]?.title ?? 'Capture your focus' }
           </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <p className="helper-text">Recent sessions</p>
+            {recentSessions.map((session) => (
+              <div key={session.id} className="section-card" style={{ padding: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <strong>{session.type} • {session.status}</strong>
+                  <span className="helper-text">
+                    {session.startedAt
+                      ? new Date(session.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : ''}
+                  </span>
+                </div>
+                {session.plannedTaskIds?.length ? (
+                  <p className="helper-text">Planned tasks: {session.plannedTaskIds.length}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

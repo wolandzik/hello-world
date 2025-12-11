@@ -6,7 +6,11 @@ export type TelemetryEventName =
   | 'planning_session.completed'
   | 'highlight.created'
   | 'objective.created'
-  | 'break.scheduled';
+  | 'break.scheduled'
+  | 'calendar.connected'
+  | 'calendar.disconnected'
+  | 'calendar.synced'
+  | 'calendar.auto_schedule';
 
 export function trackEvent(
   name: TelemetryEventName,

@@ -7,11 +7,13 @@ import planningSessionRouter from '../modules/planning-sessions/planning-session
 import syncProviderRouter from '../modules/sync/providers/google.router';
 import tasksRouter from '../modules/tasks/tasks.router';
 import timeblocksRouter from '../modules/timeblocks/timeblocks.router';
+import channelsRouter from '../modules/channels/channels.router';
 
 const router = Router();
 
 router.use('/tasks', tasksRouter);
 router.use('/timeblocks', timeblocksRouter);
+router.use('/channels', channelsRouter);
 router.use('/planning-sessions', planningSessionRouter);
 router.use('/focus-sessions', focusSessionRouter);
 router.use('/breaks', breaksRouter);

@@ -17,3 +17,8 @@ export const ProviderEnum = {
   local: 'local',
 } as const;
 
+export const ChannelVisibilityEnum = {
+  private: 'private',
+  shared: 'shared',
+} as const;
+

@@ -21,6 +21,7 @@ export function FocusSessionPanel({ tasks }: { tasks: Task[] }) {
   const [goal, setGoal] = useState('Ship core flow');
   const [actualMinutes, setActualMinutes] = useState(45);
   const [breakDuration, setBreakDuration] = useState(10);
+  const [interruptions, setInterruptions] = useState(0);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export function FocusSessionPanel({ tasks }: { tasks: Task[] }) {
 
   const completeSession = useMutation({
     mutationFn: ({ id, minutes }: { id: string; minutes: number }) =>
-      completeFocusSession(id, { actualMinutes: minutes }),
+      completeFocusSession(id, { actualMinutes: minutes, interruptions }),
     onSuccess: (session) => {
       queryClient.invalidateQueries({ queryKey: ['focusSessions'] });
       trackEvent('focus_session.completed', {
@@ -76,6 +77,11 @@ export function FocusSessionPanel({ tasks }: { tasks: Task[] }) {
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.status === 'active'),
+    [sessions]
+  );
+
+  const completedSessions = useMemo(
+    () => sessions.filter((session) => session.status === 'completed').slice(0, 3),
     [sessions]
   );
 
@@ -157,6 +163,12 @@ export function FocusSessionPanel({ tasks }: { tasks: Task[] }) {
             value={actualMinutes}
             onChange={(e) => setActualMinutes(Number(e.target.value))}
           />
+          <Input
+            label="Interruptions"
+            type="number"
+            value={interruptions}
+            onChange={(e) => setInterruptions(Number(e.target.value))}
+          />
           <Button onClick={handleComplete} disabled={!activeSession || completeSession.isPending}>
             Complete session
           </Button>
@@ -174,7 +186,29 @@ export function FocusSessionPanel({ tasks }: { tasks: Task[] }) {
           <p className="helper-text">
             Upcoming breaks: {scheduledBreaks.length}
           </p>
+          {activeSession ? (
+            <p className="helper-text">
+              Goal: {activeSession.goal ?? goal} • Planned {activeSession.plannedMinutes} minutes
+            </p>
+          ) : null}
         </div>
+      </div>
+      <div className="section-card" style={{ background: 'var(--color-surface-alt)' }}>
+        <p className="helper-text">Recent focus sessions</p>
+        {completedSessions.length === 0 && <p className="helper-text">No completed focus work yet.</p>}
+        {completedSessions.map((session) => (
+          <div key={session.id} className="section-card" style={{ padding: 10 }}>
+            <strong>{session.taskId}</strong>
+            <p className="helper-text">
+              {session.completedAt
+                ? new Date(session.completedAt).toLocaleString()
+                : 'Recently completed'}
+            </p>
+            <p className="helper-text">
+              Actual: {session.actualMinutes ?? session.plannedMinutes} min · Interruptions: {session.interruptions ?? 0}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );

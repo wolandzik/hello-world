@@ -15,6 +15,7 @@ const createFocusSessionSchema = {
       startAt: z.string().datetime().optional(),
       endAt: z.string().datetime().optional(),
       goal: z.string().optional(),
+      channelId: z.string().uuid().optional(),
     })
     .refine(
       ({ startAt, endAt }) => {
@@ -64,6 +65,9 @@ const toResponse = (session: {
   actualMinutes: session.actual_minutes,
   status: session.status,
   interruptions: session.interruptions,
+  goal: typeof session.interruptions === 'object' && session.interruptions !== null
+    ? (session.interruptions as Record<string, unknown>).goal
+    : undefined,
   createdAt: session.created_at?.toISOString(),
 });
 
@@ -71,7 +75,7 @@ focusSessionRouter.post(
   '/',
   validateRequest(createFocusSessionSchema),
   async (req, res, next) => {
-    const { userId, taskId, plannedMinutes, startAt, endAt, goal } = req.body;
+    const { userId, taskId, plannedMinutes, startAt, endAt, goal, channelId } = req.body;
 
     try {
       const parsedStart = startAt ? new Date(startAt) : new Date();
@@ -90,6 +94,21 @@ focusSessionRouter.post(
         },
       });
 
+      if (channelId) {
+        await prisma.timeBlock.create({
+          data: {
+            user_id: userId,
+            task_id: taskId,
+            channel_id: channelId,
+            start_at: parsedStart,
+            end_at: parsedEnd,
+            status: 'tentative',
+            provider: 'local',
+            notes: 'Focus session block',
+          },
+        });
+      }
+
       res.status(201).json(toResponse(session));
     } catch (error) {
       next(error);
@@ -105,14 +124,36 @@ focusSessionRouter.patch(
     const { actualMinutes, summary, interruptions } = req.body;
 
     try {
+      const existing = await prisma.focusSession.findUnique({ where: { id } });
+      if (!existing) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+      if (existing.status === 'completed') {
+        return res.status(400).json({ message: 'Session already completed' });
+      }
+
+      const updatedInterruptions = {
+        ...(typeof existing.interruptions === 'object' && existing.interruptions !== null
+          ? (existing.interruptions as Record<string, unknown>)
+          : {}),
+        summary,
+        interruptions,
+      };
+
       const session = await prisma.focusSession.update({
         where: { id },
         data: {
           status: 'completed',
           actual_minutes: actualMinutes,
           end_at: new Date(),
-          interruptions: { summary, interruptions },
+          interruptions: updatedInterruptions,
         },
+      });
+
+      const currentActual = existing.actual_minutes ?? 0;
+      await prisma.task.update({
+        where: { id: session.task_id },
+        data: { actual_minutes: currentActual + actualMinutes },
       });
 
       res.json(toResponse(session));
